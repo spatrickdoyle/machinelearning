@@ -3,6 +3,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.grid_search import GridSearchCV
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
+from sklearn.ensemble import RandomForestClassifier
 
 PATH = './machinelearning-data/'
 
@@ -26,16 +27,33 @@ clf = GridSearchCV(LogisticRegression(penalty='l1'), tuned_parameters, cv=3,
                    n_jobs=4, scoring='accuracy')
 clf.fit(X_train_valid, y_train_valid)
 
-print("Best parameters set found on development set:")
-print(clf.best_params_)
+#print("Best parameters set found on development set:")
+#print(clf.best_params_)
 
 clf_best = LogisticRegression(penalty='l1',C=clf.best_params_['C'])
 clf_best.fit(X_train_valid,y_train_valid)
 
 y_true, y_pred = y_test, clf_best.predict(X_test)
-print('Accuracy:')
+print('Accuracy of Logistic Regression:')
 print(accuracy_score(y_true, y_pred))
-print ('Confusion Matrix:')
-print(confusion_matrix(y_true, y_pred))
+#print ('Confusion Matrix:')
+#print(confusion_matrix(y_true, y_pred))
 print "Weights: "
 print clf_best.coef_
+
+tuned_parameters = [{'n_estimators': [1, 2, 3, 4, 5, 10, 30, 100]}]
+
+clf_forest = GridSearchCV(RandomForestClassifier(), tuned_parameters, cv=3,
+                   n_jobs=4, scoring='accuracy')
+clf_forest.fit(X_train_valid, y_train_valid)
+
+#print("Best parameters set found on development set:")
+#print(clf_forest.best_params_)
+
+y_true, y_pred = y_test, clf_forest.predict(X_test)
+print('Accuracy of Random Forest:')
+print(accuracy_score(y_true, y_pred))
+#print ('Confusion Matrix:')
+#print(confusion_matrix(y_true, y_pred))
+print 'Weights:'
+print clf_forest.best_estimator_.feature_importances_
