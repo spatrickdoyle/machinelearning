@@ -1,0 +1,135 @@
+# Below we specify training, validation, and model snapshotting
+
+#####Specification ordered by descending importance#####
+base_lr: 0.01 # initial learning rate
+momentum: 0.9 # constant momentum
+
+test_interval: 10 # test model on validation data every 10 training iterations
+display: 5 # display training performance every 5 iterations
+max_iter: 3000 # maximum number of iterations
+snapshot: 10 # save the model every 10 iterations
+snapshot_prefix: "../Snapshots/1Layer/snapshot" # where to save the model
+
+weight_decay: 0.0005 # L2 regularization
+lr_policy: "inv" # learning rate decay schedule
+gamma: 0.0001
+power: 0.6
+
+random_seed: 1201 # the random seed
+solver_mode: CPU # using CPU (there is a GPU option)
+test_iter: 1 # How many iterations in each validation test
+# This basically equals (# validation examples)/(validation batch size) 
+test_state: { stage: "test-on-valid-set" } #test specification
+
+# Below is the model architecture
+net_param {
+  name: "1Layer" # model name
+# The IMAGE_DATA layer reads in the pngs with our data
+# we have two copies of it
+# one reads in training data during training
+# the other reads in validation data during testing
+  layers {
+    name: "data_train"
+    type: IMAGE_DATA
+    top: "data" # this is our feature data
+    top: "label" # this is our label
+    image_data_param {
+      source: "../train.caffe"
+      batch_size: 680 # number of examples used for each training update
+      shuffle: true
+    }
+    transform_param {
+      scale: 0.00392156 # scales image values to [0, 1] range
+    }
+    include: { phase: TRAIN }
+  }
+  layers {
+    name: "data_valid"
+    type: IMAGE_DATA
+    top: "data"
+    top: "label"
+    image_data_param {
+      source: "../valid.caffe"
+      batch_size: 863
+    }
+    transform_param {
+      scale: 0.00392156
+    }
+    include: {
+      phase: TEST
+      stage: "test-on-valid-set"
+    }
+  }
+# next: first fully connected layer
+  layers {
+    name: "fc1" # layer name
+    type: INNER_PRODUCT # layer type
+    bottom: "data" # previous layer
+    top: "fc1" # the output layer
+    blobs_lr: 1 
+    blobs_lr: 2
+    inner_product_param {
+      num_output: 70 # number of hidden units
+      weight_filler {
+        type: "xavier" # how to initialize parameters
+      }
+      bias_filler {
+        type: "constant" #bias initialization
+      }
+    }
+  }
+# next: pass first layer outputs through ReLU activation
+  layers {
+    name: "fc1_relu"
+    type: RELU
+    bottom: "fc1"
+    top: "fc1"
+  }
+# below is optional dropout regularization
+# uncomment to use it
+
+#  layers {
+#    name: "fc1_dropout"
+#    type: DROPOUT
+#    bottom: "fc1"
+#    top: "fc1"
+#    dropout_param {
+#      dropout_ratio: 0.5
+#    }
+#  }
+
+# next: final fully connected layer
+  layers {
+    name: "fc_final"
+    type: INNER_PRODUCT
+    bottom: "fc1"
+    top: "fc_final"
+    blobs_lr: 1
+    blobs_lr: 2
+    inner_product_param {
+      num_output: 3 # one output for each of the 3 classes
+      weight_filler {
+        type: "xavier"
+      }
+      bias_filler {
+        type: "constant"
+      }
+    }
+  }
+# accuracy layer that outputs accuracy
+  layers {
+    name: "accuracy"
+    type: ACCURACY
+    bottom: "fc_final"
+    bottom: "label"
+    top: "accuracy"
+  }
+# loss layer that output our softmax loss
+  layers {
+    name: "loss"
+    type: SOFTMAX_LOSS
+    bottom: "fc_final"
+    bottom: "label"
+    top: "loss"
+  }
+}
